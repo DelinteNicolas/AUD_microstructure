@@ -1,6 +1,6 @@
 # AUD_microstructure
 
-![GitHub repo size](https://img.shields.io/github/repo-size/DelinteNicolas/AUD_microstructure)
+![GitHub repo size](https://img.shields.io/github/repo-size/DelinteNicolas/AUD_microstructure)[![DOI](https://zenodo.org/badge/874209836.svg)](https://doi.org/10.5281/zenodo.15438434)
 
 A repository for the creation of figures and plots for an AUD population study.
 
