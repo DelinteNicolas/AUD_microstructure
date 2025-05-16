@@ -12,7 +12,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from scipy.stats import linregress, ttest_ind
 from statannotations.Annotator import Annotator
-from unravel.viz import plot_trk, plot_metric_along_trajectory
+from unravel.viz import plot_metric_along_trajectory, plot_trk
 from unravel.stream import extract_nodes, get_roi_sections_from_nodes
 
 
@@ -88,18 +88,35 @@ def plot_df(df, region: str, metric: str, show_E3: bool = False,
 def get_mean_trajectories(dic: dict, region: str, metric: str,
                           control_list: list, time: str = ''):
 
-    patients, controls = [], []
-    for p, values in dic.items():
+    r = region
+    m = metric
+    pat_1 = True
+    con_1 = True
+    for p in dic.keys():
         if time in p:
             try:
-                data = np.array(values[region][metric])[..., np.newaxis]
                 if p in control_list:
-                    controls.append(data)
+                    if con_1:
+                        controls = np.array(dic[p][r][m])[..., np.newaxis]
+                        con_1 = False
+                    else:
+                        controls = np.append(controls,
+                                             np.array(
+                                                 dic[p][r][m])[..., np.newaxis],
+                                             axis=1)
                 else:
-                    patients.append(data)
+                    if pat_1:
+                        patients = np.array(dic[p][r][m])[..., np.newaxis]
+                        pat_1 = False
+                    else:
+                        patients = np.append(patients,
+                                             np.array(
+                                                 dic[p][r][m])[..., np.newaxis],
+                                             axis=1)
             except KeyError:
+                print(p)
                 continue
-    return np.concatenate(patients, axis=1), np.concatenate(controls, axis=1)
+    return patients, controls
 
 
 def linear_regression(df, correction_metric: str):
@@ -118,7 +135,6 @@ def linear_regression(df, correction_metric: str):
                                        ['Value'])))
                     df.loc[(patient, r, m), 'Value_adj'] = a
                 except KeyError:
-                    # print(str((patient, r))+' not found')
                     continue
     return df
 
@@ -133,14 +149,14 @@ if __name__ == '__main__':
     control_list_path = root + 'control_list.json'
 
     correction_metric = 'snr'
-    plot_regress = False
+    plot_regress = True
     show_E3 = False
     plot_violins = True
 
-    trajectory_region = 'ci_left'
-    trajectory_metric = 'frac_dmd'
+    trajectory_region = 'uf_right'
+    trajectory_metric = 'AD'
 
-    flip = False
+    flip = True
 
     trk_file = root + 'sub02_E1_' + trajectory_region+'.trk'
 
@@ -159,22 +175,47 @@ if __name__ == '__main__':
         plt.plot(x, y, 'o', label='original data')
         plt.plot(x, res.intercept + res.slope*x, 'r', label='fitted line')
         y_adj = np.mean(y)+y-(res.intercept+res.slope*x)
-        plt.scatter(x, y_adj, c='orange')
+        plt.scatter(x, y_adj, c='orange', label='regressed data')
         plt.legend()
         plt.show()
 
     region_list = list(df.index.get_level_values(1).unique())
     metric_list = list(df.index.get_level_values(2).unique())
 
-    unwanted_metrics = ['snr']
+    # metric_list.remove('FA_DTI')
+    # metric_list.remove('AD_DTI')
+    # metric_list.remove('RD_DTI')
+    # metric_list.remove('MD_DTI')
+    # metric_list.remove('wFA')
+    # metric_list.remove('wAD')
+    # metric_list.remove('wRD')
+    # metric_list.remove('wMD')
 
-    for m in unwanted_metrics:
-        metric_list.remove(m)
+    # metric_list.remove('fvf')
+    # metric_list.remove('fvf_tot')
+    # metric_list.remove('frac')
+    # metric_list.remove('stream_count')
+    # metric_list.remove('voxel_count')
 
-    unwanted_regions = []
+    metric_list.remove('snr')
 
-    for r in unwanted_regions:
-        region_list.remove(r)
+    # metric_list.remove('movement')
+    # metric_list.remove('frac_csf')
+
+    # region_list.remove('slf_right')
+    # region_list.remove('slf_left')
+    # region_list.remove('ci_right')
+    # region_list.remove('ci_left')
+
+    # unwanted_metrics = ['snr']
+
+    # for m in unwanted_metrics:
+    #     metric_list.remove(m)
+
+    # unwanted_regions = []
+
+    # for r in unwanted_regions:
+    #     region_list.remove(r)
 
     if plot_violins:
         for r in region_list:
@@ -195,7 +236,7 @@ if __name__ == '__main__':
     pvals, pr, pm, pp = [], [], [], []
 
     for r in region_list:
-        for m in [m for m in metric_list if m not in unwanted_metrics]:
+        for m in metric_list:
             for p in pairs:
                 a = df.loc[:, r, m, p[0][0], p[0][1]]['Value_adj']
                 b = df.loc[:, r, m, p[1][0], p[1][1]]['Value_adj']
@@ -210,13 +251,12 @@ if __name__ == '__main__':
     psorted = np.sort(np.array(pvals))
     idx_s = np.argsort(np.array(pvals))
 
-    # Benjamini-Hochberg
-    Q = .05
-    m = 4*len(region_list)*2
-    pbh = np.linspace(1, len(psorted), len(psorted))/m*Q
-    significant = np.sum(psorted < pbh)
+    # Bonferroni
 
-    print('P-values accepted with Benjamini-Hochberg:')
+    # number of comparisons = metrics * rois * time
+    m = len(metric_list)*len(region_list)*4
+    pb = 0.05 / m
+    significant = np.sum(psorted < pb)
     for i in range(significant):
         idx = idx_s[i]
         print(pr[idx], pm[idx], pp[idx], pvals[idx])
@@ -240,7 +280,7 @@ if __name__ == '__main__':
 
     patients, controls = get_mean_trajectories(data_t, trajectory_region,
                                                trajectory_metric,
-                                               control_list, time='E2')
+                                               control_list, time='E1')
 
     plt.figure(figsize=(6, 5))
 
@@ -249,11 +289,13 @@ if __name__ == '__main__':
     mean_c = np.mean(controls, axis=1)
     std_c = np.std(controls, axis=1)
 
+    l = patients.shape[0]
+
     if flip:
-        mean_p[1:9] = mean_p[:-9:-1]
-        std_p[1:9] = std_p[:-9:-1]
-        mean_c[1:9] = mean_c[:-9:-1]
-        std_c[1:9] = std_c[:-9:-1]
+        mean_p[1:l] = mean_p[:-l:-1]
+        std_p[1:l] = std_p[:-l:-1]
+        mean_c[1:l] = mean_c[:-l:-1]
+        std_c[1:l] = std_c[:-l:-1]
 
     plot_metric_along_trajectory(mean_p, std_p,
                                  new_fig=False, label='case')
@@ -262,14 +304,16 @@ if __name__ == '__main__':
 
     plt.xlabel('Trajectory')
     plt.ylabel(trajectory_metric)
-    # plt.ylim([0.0005,0.0025])
+    # plt.ylim([0.001, 0.0025])
+    # plt.ylim([0.001, 0.0020])
+    # plt.ylim([0.5, 1])
     # plt.ylim([0.3, 0.7])
     plt.title('Evolution of '+trajectory_metric+' along the '+trajectory_region)
     plt.legend()
 
     # Showing tracts -----------------------------------------------------------
 
-    point_array = extract_nodes(trk_file)
+    point_array = extract_nodes(trk_file, nodes=8)
     roi = get_roi_sections_from_nodes(trk_file, point_array)
 
     plot_trk(trk_file, scalar=roi, background='white', color_map='Set3')
