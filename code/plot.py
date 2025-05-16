@@ -88,35 +88,18 @@ def plot_df(df, region: str, metric: str, show_E3: bool = False,
 def get_mean_trajectories(dic: dict, region: str, metric: str,
                           control_list: list, time: str = ''):
 
-    r = region
-    m = metric
-    pat_1 = True
-    con_1 = True
-    for p in dic.keys():
+    patients, controls = [], []
+    for p, values in dic.items():
         if time in p:
             try:
+                data = np.array(values[region][metric])[..., np.newaxis]
                 if p in control_list:
-                    if con_1:
-                        controls = np.array(dic[p][r][m])[..., np.newaxis]
-                        con_1 = False
-                    else:
-                        controls = np.append(controls,
-                                             np.array(
-                                                 dic[p][r][m])[..., np.newaxis],
-                                             axis=1)
+                    controls.append(data)
                 else:
-                    if pat_1:
-                        patients = np.array(dic[p][r][m])[..., np.newaxis]
-                        pat_1 = False
-                    else:
-                        patients = np.append(patients,
-                                             np.array(
-                                                 dic[p][r][m])[..., np.newaxis],
-                                             axis=1)
+                    patients.append(data)
             except KeyError:
-                print(p)
                 continue
-    return patients, controls
+    return np.concatenate(patients, axis=1), np.concatenate(controls, axis=1)
 
 
 def linear_regression(df, correction_metric: str):
@@ -182,40 +165,15 @@ if __name__ == '__main__':
     region_list = list(df.index.get_level_values(1).unique())
     metric_list = list(df.index.get_level_values(2).unique())
 
-    # metric_list.remove('FA_DTI')
-    # metric_list.remove('AD_DTI')
-    # metric_list.remove('RD_DTI')
-    # metric_list.remove('MD_DTI')
-    # metric_list.remove('wFA')
-    # metric_list.remove('wAD')
-    # metric_list.remove('wRD')
-    # metric_list.remove('wMD')
+    unwanted_metrics = ['snr']
 
-    # metric_list.remove('fvf')
-    # metric_list.remove('fvf_tot')
-    # metric_list.remove('frac')
-    # metric_list.remove('stream_count')
-    # metric_list.remove('voxel_count')
+    for m in unwanted_metrics:
+        metric_list.remove(m)
 
-    metric_list.remove('snr')
+    unwanted_regions = []
 
-    # metric_list.remove('movement')
-    # metric_list.remove('frac_csf')
-
-    # region_list.remove('slf_right')
-    # region_list.remove('slf_left')
-    # region_list.remove('ci_right')
-    # region_list.remove('ci_left')
-
-    # unwanted_metrics = ['snr']
-
-    # for m in unwanted_metrics:
-    #     metric_list.remove(m)
-
-    # unwanted_regions = []
-
-    # for r in unwanted_regions:
-    #     region_list.remove(r)
+    for r in unwanted_regions:
+        region_list.remove(r)
 
     if plot_violins:
         for r in region_list:
