@@ -45,7 +45,7 @@ def jsonToPandas(jsonFilePath: str, control_list_path: str = None,
             pat = [name in control_list for name in p_list]
         else:
             pat = [name[:-3] in control_list for name in p_list]
-        p['Patient type'] = ['control' if p else 'case' for p in pat]
+        p['Patient type'] = ['control' if p else 'AUD' for p in pat]
 
     t_list = p.index.get_level_values(0)
     pat = [n[-2:] for n in t_list]
@@ -65,24 +65,30 @@ def plot_df(df, region: str, metric: str, show_E3: bool = False,
     y = 'Value_adj' if adjusted_value else 'Value'
 
     fig, ax = plt.subplots(figsize=(5, 5))
+    sns.swarmplot(data=df, x='Time', y=y, hue_order=['AUD', 'control'],
+                  alpha=0.6, hue='Patient type', legend=False, dodge=True)
     ax = sns.violinplot(data=df, x='Time', y=y, cut=0, hue='Patient type',
                         palette=sns.color_palette('pastel'),
-                        order=['E1', 'E2'], hue_order=['case', 'control'])
+                        inner="quart",
+                        # split=True, gap=1,
+                        order=['E1', 'E2'], hue_order=['AUD', 'control'])
+
     ax.set_ylabel(metric)
     ax.set_title(metric + ' values of all patient for the ' + region)
 
-    pairs = [(("E1", "case"), ("E1", "control")),
-             (("E2", "case"), ("E2", "control")),
-             (("E1", "case"), ("E2", "case")),
+    pairs = [(("E1", "AUD"), ("E1", "control")),
+             (("E2", "AUD"), ("E2", "control")),
+             (("E1", "AUD"), ("E2", "AUD")),
              (("E1", "control"), ("E2", "control"))]
     if show_E3:
-        pairs += [(("E2", "case"), ("E3", "case")),
-                  (("E1", "case"), ("E3", "case"))]
+        pairs += [(("E2", "AUD"), ("E3", "AUD")),
+                  (("E1", "AUD"), ("E3", "AUD"))]
 
     annotator = Annotator(ax, pairs, data=df, x='Time', y=y,
                           hue='Patient type',
-                          order=['E1', 'E2'], hue_order=['case', 'control'])
-    annotator.configure(test="t-test_welch").apply_and_annotate()
+                          order=['E1', 'E2'], hue_order=['AUD', 'control'])
+    annotator.configure(test="t-test_welch", text_format='simple', verbose=0,
+                        show_test_name=False).apply_and_annotate()
 
 
 def get_mean_trajectories(dic: dict, region: str, metric: str,
@@ -180,13 +186,13 @@ if __name__ == '__main__':
             for m in metric_list:
                 plot_df(df, r, m, show_E3=show_E3)
 
-    pairs = [(("E1", "case"), ("E1", "control")),
-             (("E2", "case"), ("E2", "control")),
-             (("E1", "case"), ("E2", "case")),
+    pairs = [(("E1", "AUD"), ("E1", "control")),
+             (("E2", "AUD"), ("E2", "control")),
+             (("E1", "AUD"), ("E2", "AUD")),
              (("E1", "control"), ("E2", "control"))]
     if show_E3:
-        pairs += [(("E2", "case"), ("E3", "case")),
-                  (("E1", "case"), ("E3", "case"))]
+        pairs += [(("E2", "AUD"), ("E3", "AUD")),
+                  (("E1", "AUD"), ("E3", "AUD"))]
 
     df = df.set_index('Time', append=True)
     df = df.set_index('Patient type', append=True)
@@ -256,7 +262,7 @@ if __name__ == '__main__':
         std_c[1:l] = std_c[:-l:-1]
 
     plot_metric_along_trajectory(mean_p, std_p,
-                                 new_fig=False, label='case')
+                                 new_fig=False, label='AUD')
     plot_metric_along_trajectory(mean_c, std_c,
                                  new_fig=False, label='control')
 
