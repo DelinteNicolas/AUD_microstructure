@@ -128,6 +128,77 @@ def linear_regression(df, correction_metric: str):
     return df
 
 
+def compute_correlation(micro_database, ac_database, region: str, metric: str,
+                        diff: bool = True):
+    """
+    Compute and plot correlation between alcohol consumption and microstructural
+    metric values.
+
+    Parameters:
+    -----------
+    micro_database : pd.DataFrame
+        DataFrame with multi-index (Patient, Region, Metric) and 'Value_adj'
+        column.
+    ac_database : pd.DataFrame
+        DataFrame with columns including 'ID_sujet' (patient ID) and
+        'Alcohol_units' (daily consumption).
+    region : str
+        Brain region of interest.
+    metric : str
+        Microstructural metric to correlate (e.g., 'FA', 'AD').
+    """
+
+    # Extract unique patient IDs (strip time suffix)
+    patients = micro_database.index.get_level_values(0).unique()
+    patients = [p[:-3] for p in patients if p.endswith(('E1', 'E2'))]
+
+    # Prepare data for correlation
+    ac_list = []
+    metric_means = []
+
+    for pid in set(patients):
+        try:
+            # Mean of Value_adj for that patient, region, metric (over time)
+            val_E1 = micro_database.loc[pid+'_E1', region, metric]['Value_adj']
+            val_E2 = micro_database.loc[pid+'_E2', region, metric]['Value_adj']
+            if diff:
+                p_diff = (val_E2.item()-val_E1.item())
+            else:
+                p_diff = val_E1.item()
+            # Find alcohol consumption
+            ac_val = ac_database[ac_database['ID_sujet']
+                                 == pid]['Alcohol_units'].values
+            if len(ac_val) == 1:
+                metric_means.append(p_diff)
+                ac_list.append(ac_val[0])
+        except KeyError:
+            continue
+        except Exception as e:
+            print(f'Error processing patient {pid}: {e}')
+            continue
+
+    # Correlation and linear regression
+    slope, intercept, r_val, p_val, stderr = linregress(ac_list, metric_means)
+
+    if p_val < 0.05:  # /(5*15):
+
+        # Plot
+        plt.figure(figsize=(5, 5))
+        sns.regplot(x=ac_list, y=metric_means, color='black', ci=95)
+        plt.xlabel('Daily alcohol consumption [1 unit = 10g of ethanol]')
+        if diff:
+            plt.ylabel(f'Evolution in mean {metric} (E2-E1)')
+        else:
+            plt.ylabel(f'Mean {metric} at E1')
+        plt.title(
+            f'Correlation in {region} - {metric}\nR={r_val:.2f}, p={p_val:.3f}')
+        plt.tight_layout()
+        plt.show()
+
+        print(
+            f'Correlation in {region} - {metric}: R = {r_val:.2f}, p = {p_val:.3g}')
+
+
 if __name__ == '__main__':
 
     root = '../data/'
@@ -181,10 +252,11 @@ if __name__ == '__main__':
     for r in unwanted_regions:
         region_list.remove(r)
 
-    if plot_violins:
-        for r in region_list:
-            for m in metric_list:
-                plot_df(df, r, m, show_E3=show_E3)
+    # if plot_violins:
+    #     for r in region_list:
+    #         for m in metric_list:
+    #             plot_df(df, r, m, show_E3=show_E3)
+    df_copy = df.copy()
 
     pairs = [(("E1", "AUD"), ("E1", "control")),
              (("E2", "AUD"), ("E2", "control")),
@@ -207,6 +279,8 @@ if __name__ == '__main__':
                 # Welch t-test
                 _, pval = ttest_ind(a, b, equal_var=False)
                 if pval < 0.05:
+                    if plot_violins:
+                        plot_df(df_copy, r, m, show_E3=show_E3)
                     pvals.append(pval)
                     pr.append(r)
                     pm.append(m)
@@ -281,3 +355,12 @@ if __name__ == '__main__':
     roi = get_roi_sections_from_nodes(trk_file, point_array)
 
     plot_trk(trk_file, scalar=roi, background='white', color_map='Set3')
+
+    # Alcohol consumption correlation -----------------------------------------
+
+    acd = pd.read_excel(root + 'demographic_data.xlsx')
+
+    for r in region_list:
+        for m in metric_list:
+            compute_correlation(df, acd, r, m, diff=True)
+            compute_correlation(df, acd, r, m, diff=False)
