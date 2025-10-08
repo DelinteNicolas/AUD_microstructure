@@ -232,10 +232,12 @@ if __name__ == '__main__':
         x = df.loc[:, trajectory_region, 'snr']['Value']
         y = df.loc[:, trajectory_region, 'FA']['Value']
         res = linregress(x, y)
-        plt.plot(x, y, 'o', label='original data')
-        plt.plot(x, res.intercept + res.slope*x, 'r', label='fitted line')
+        plt.plot(x, y, 'o', label='original patient data')
+        plt.plot(x, res.intercept + res.slope*x, 'r',
+                 label='fitted regression line')
         y_adj = np.mean(y)+y-(res.intercept+res.slope*x)
-        plt.scatter(x, y_adj, c='orange', label='regressed data')
+        plt.scatter(x, y_adj, c='orange', label='adjusted patient data')
+        plt.title(f'R={res.rvalue:.2f}, p={res.pvalue:.3f}')
         plt.legend()
         plt.show()
 
@@ -252,10 +254,6 @@ if __name__ == '__main__':
     for r in unwanted_regions:
         region_list.remove(r)
 
-    # if plot_violins:
-    #     for r in region_list:
-    #         for m in metric_list:
-    #             plot_df(df, r, m, show_E3=show_E3)
     df_copy = df.copy()
 
     pairs = [(("E1", "AUD"), ("E1", "control")),
@@ -346,7 +344,8 @@ if __name__ == '__main__':
     # plt.ylim([0.001, 0.0020])
     # plt.ylim([0.5, 1])
     # plt.ylim([0.3, 0.7])
-    plt.title('Evolution of '+trajectory_metric+' along the '+trajectory_region)
+    plt.title('Evolution of '+trajectory_metric +
+              ' along the '+trajectory_region)
     plt.legend()
 
     # Showing tracts -----------------------------------------------------------
