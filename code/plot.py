@@ -66,10 +66,10 @@ def plot_df(df, region: str, metric: str, show_E3: bool = False,
 
     fig, ax = plt.subplots(figsize=(5, 5))
     sns.swarmplot(data=df, x='Time', y=y, hue_order=['AUD', 'control'],
-                  alpha=0.6, hue='Patient type', legend=False, dodge=True)
+                  alpha=0.6, hue='Patient type', legend=True, dodge=True)
     ax = sns.violinplot(data=df, x='Time', y=y, cut=0, hue='Patient type',
                         palette=sns.color_palette('pastel'),
-                        inner="quart",
+                        inner="quart", legend=False,
                         # split=True, gap=1,
                         order=['E1', 'E2'], hue_order=['AUD', 'control'])
 
@@ -184,8 +184,10 @@ def compute_correlation(micro_database, ac_database, region: str, metric: str,
 
         # Plot
         plt.figure(figsize=(5, 5))
-        sns.regplot(x=ac_list, y=metric_means, color='black', ci=95)
+        sns.regplot(x=ac_list, y=metric_means, color='black', ci=95,
+                    label='AUD patient')
         plt.xlabel('Daily alcohol consumption [1 unit = 10g of ethanol]')
+        plt.legend()
         if diff:
             plt.ylabel(f'Evolution in mean {metric} (E2-E1)')
         else:
