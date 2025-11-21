@@ -49,7 +49,7 @@ def jsonToPandas(jsonFilePath: str, control_list_path: str = None,
 
     t_list = p.index.get_level_values(0)
     pat = [n[-2:] for n in t_list]
-    p['Time'] = pat
+    p['Time [-]'] = pat
 
     return p
 
@@ -60,14 +60,14 @@ def plot_df(df, region: str, metric: str, show_E3: bool = False,
     df = df.loc[:, region, metric]
 
     if not show_E3:
-        df = df[df['Time'] != 'E3']
+        df = df[df['Time [-]'] != 'E3']
 
     y = 'Value_adj' if adjusted_value else 'Value'
 
     fig, ax = plt.subplots(figsize=(5, 5))
-    sns.swarmplot(data=df, x='Time', y=y, hue_order=['AUD', 'control'],
+    sns.swarmplot(data=df, x='Time [-]', y=y, hue_order=['AUD', 'control'],
                   alpha=0.6, hue='Patient type', legend=True, dodge=True)
-    ax = sns.violinplot(data=df, x='Time', y=y, cut=0, hue='Patient type',
+    ax = sns.violinplot(data=df, x='Time [-]', y=y, cut=0, hue='Patient type',
                         palette=sns.color_palette('pastel'),
                         inner="quart", legend=False,
                         # split=True, gap=1,
@@ -84,7 +84,7 @@ def plot_df(df, region: str, metric: str, show_E3: bool = False,
         pairs += [(("E2", "AUD"), ("E3", "AUD")),
                   (("E1", "AUD"), ("E3", "AUD"))]
 
-    annotator = Annotator(ax, pairs, data=df, x='Time', y=y,
+    annotator = Annotator(ax, pairs, data=df, x='Time [-]', y=y,
                           hue='Patient type',
                           order=['E1', 'E2'], hue_order=['AUD', 'control'])
     annotator.configure(test="t-test_welch", text_format='simple', verbose=0,
@@ -189,9 +189,9 @@ def compute_correlation(micro_database, ac_database, region: str, metric: str,
         plt.xlabel('Daily alcohol consumption [1 unit = 10g of ethanol]')
         plt.legend()
         if diff:
-            plt.ylabel(f'Evolution in mean {metric} (E2-E1)')
+            plt.ylabel(f'Evolution in mean {metric} (E2-E1) [-]')
         else:
-            plt.ylabel(f'Mean {metric} at E1')
+            plt.ylabel(f'Mean {metric} at E1 [-]')
         plt.title(
             f'Correlation in {region} - {metric}\nR={r_val:.2f}, p={p_val:.3f}')
         plt.tight_layout()
@@ -266,7 +266,7 @@ if __name__ == '__main__':
         pairs += [(("E2", "AUD"), ("E3", "AUD")),
                   (("E1", "AUD"), ("E3", "AUD"))]
 
-    df = df.set_index('Time', append=True)
+    df = df.set_index('Time [-]', append=True)
     df = df.set_index('Patient type', append=True)
 
     pvals, pr, pm, pp = [], [], [], []
@@ -336,11 +336,11 @@ if __name__ == '__main__':
         std_c[1:l] = std_c[:-l:-1]
 
     plot_metric_along_trajectory(mean_p, std_p,
-                                 new_fig=False, label='AUD')
+                                 new_fig=False, label='AUD (n=43)')
     plot_metric_along_trajectory(mean_c, std_c,
-                                 new_fig=False, label='control')
+                                 new_fig=False, label='control (n=20)')
 
-    plt.xlabel('Trajectory')
+    plt.xlabel('Trajectory [-]')
     plt.ylabel(trajectory_metric)
     # plt.ylim([0.001, 0.0025])
     # plt.ylim([0.001, 0.0020])
