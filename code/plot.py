@@ -336,9 +336,9 @@ if __name__ == '__main__':
         std_c[1:l] = std_c[:-l:-1]
 
     plot_metric_along_trajectory(mean_p, std_p,
-                                 new_fig=False, label='AUD (n=43)')
+                                 new_fig=False, label='AUD')
     plot_metric_along_trajectory(mean_c, std_c,
-                                 new_fig=False, label='control (n=20)')
+                                 new_fig=False, label='control')
 
     plt.xlabel('Trajectory [-]')
     plt.ylabel(trajectory_metric)
